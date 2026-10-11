@@ -127,8 +127,13 @@ int key_weapon5 = '5';
 int key_weapon6 = '6';
 int key_weapon7 = '7';
 int key_weapon8 = '8';
+#ifdef DG_MONO
+int key_prevweapon = ',';   // pad: LB / RB
+int key_nextweapon = '.';
+#else
 int key_prevweapon = 0;
 int key_nextweapon = 0;
+#endif
 
 // Map control keys:
 

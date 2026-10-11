@@ -68,26 +68,26 @@ P_PointOnLineSide
     fixed_t	left;
     fixed_t	right;
 	
-    if (!line->dx)
+    if (!LINE_DX(line))
     {
 	if (x <= line->v1->x)
-	    return line->dy > 0;
+	    return LINE_DY(line) > 0;
 	
-	return line->dy < 0;
+	return LINE_DY(line) < 0;
     }
-    if (!line->dy)
+    if (!LINE_DY(line))
     {
 	if (y <= line->v1->y)
-	    return line->dx < 0;
+	    return LINE_DX(line) < 0;
 	
-	return line->dx > 0;
+	return LINE_DX(line) > 0;
     }
 	
     dx = (x - line->v1->x);
     dy = (y - line->v1->y);
 	
-    left = FixedMul ( line->dy>>FRACBITS , dx );
-    right = FixedMul ( dy , line->dx>>FRACBITS );
+    left = FixedMul ( LINE_DY(line)>>FRACBITS , dx );
+    right = FixedMul ( dy , LINE_DX(line)>>FRACBITS );
 	
     if (right < left)
 	return 0;		// front side
@@ -114,7 +114,7 @@ P_BoxOnLineSide
       case ST_HORIZONTAL:
 	p1 = tmbox[BOXTOP] > ld->v1->y;
 	p2 = tmbox[BOXBOTTOM] > ld->v1->y;
-	if (ld->dx < 0)
+	if (LINE_DX(ld) < 0)
 	{
 	    p1 ^= 1;
 	    p2 ^= 1;
@@ -124,7 +124,7 @@ P_BoxOnLineSide
       case ST_VERTICAL:
 	p1 = tmbox[BOXRIGHT] < ld->v1->x;
 	p2 = tmbox[BOXLEFT] < ld->v1->x;
-	if (ld->dy < 0)
+	if (LINE_DY(ld) < 0)
 	{
 	    p1 ^= 1;
 	    p2 ^= 1;
@@ -209,8 +209,8 @@ P_MakeDivline
 {
     dl->x = li->v1->x;
     dl->y = li->v1->y;
-    dl->dx = li->dx;
-    dl->dy = li->dy;
+    dl->dx = LINE_DX(li);
+    dl->dy = LINE_DY(li);
 }
 
 

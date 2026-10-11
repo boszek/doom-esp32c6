@@ -158,7 +158,7 @@ boolean P_CrossSubsector (int num)
 
     for ( ; count ; seg++, count--)
     {
-	line = seg->linedef;
+	line = SEG_LINEDEF(seg);
 
 	// allready checked other side?
 	if (line->validcount == validcount)
@@ -200,8 +200,8 @@ boolean P_CrossSubsector (int num)
 	    return false;
 	
 	// crosses a two sided line
-	front = seg->frontsector;
-	back = seg->backsector;
+	front = SEG_FRONT(seg);
+	back = SEG_BACK(seg);
 
 	// no wall to block sight with?
 	if (front->floorheight == back->floorheight
@@ -269,9 +269,12 @@ boolean P_CrossBSPNode (int bspnum)
     }
 		
     bsp = &nodes[bspnum];
+    divline_t	bspline;
+    bspline.x = NODE_X(bsp); bspline.y = NODE_Y(bsp);
+    bspline.dx = NODE_DX(bsp); bspline.dy = NODE_DY(bsp);
     
     // decide which side the start point is on
-    side = P_DivlineSide (strace.x, strace.y, (divline_t *)bsp);
+    side = P_DivlineSide (strace.x, strace.y, &bspline);
     if (side == 2)
 	side = 0;	// an "on" should cross both sides
 
@@ -280,7 +283,7 @@ boolean P_CrossBSPNode (int bspnum)
 	return false;
 	
     // the partition plane is crossed here
-    if (side == P_DivlineSide (t2x, t2y,(divline_t *)bsp))
+    if (side == P_DivlineSide (t2x, t2y, &bspline))
     {
 	// the line doesn't touch the other side
 	return true;

@@ -66,7 +66,14 @@ unsigned int numlumps = 0;
 
 // Hash table for fast lookups
 
+#ifdef DG_MONO
+// tablica mieszajaca na indeksach (2 B/lump); lancuch idzie od ostatniego lumpa do pierwszego
+static unsigned short *lumphash;
+static unsigned short *lumpnext;
+#define NO_LUMP 0xFFFF
+#else
 static lumpinfo_t **lumphash;
+#endif
 
 // Hash function used for lump names.
 
@@ -87,6 +94,9 @@ unsigned int W_LumpNameHash(const char *s)
 }
 
 // Increase the size of the lumpinfo[] array to the specified size.
+#ifdef DG_MONO
+static void ExtendLumpInfo(int newnumlumps) { }
+#else
 static void ExtendLumpInfo(int newnumlumps)
 {
     lumpinfo_t *newlumpinfo;
@@ -127,6 +137,7 @@ static void ExtendLumpInfo(int newnumlumps)
     lumpinfo = newlumpinfo;
     numlumps = newnumlumps;
 }
+#endif
 
 //
 // LUMP BASED ROUTINES.
@@ -204,12 +215,23 @@ wad_file_t *W_AddFile (char *filename)
 		header.numlumps = LONG(header.numlumps);
 		header.infotableofs = LONG(header.infotableofs);
 		length = header.numlumps*sizeof(filelump_t);
+#ifdef DG_MONO
+		fileinfo = NULL;
+#else
 		fileinfo = Z_Malloc(length, PU_STATIC, 0);
 
         W_Read(wad_file, header.infotableofs, fileinfo, length);
+#endif
         newnumlumps += header.numlumps;
     }
 
+#ifdef DG_MONO
+    // katalog zostaje we flashu: lumpinfo wskazuje wprost na zmapowana tablice wpisow
+    dg_wad_file = wad_file;
+    lumpinfo = (lumpinfo_t *) (wad_file->mapped + header.infotableofs);
+    numlumps = header.numlumps;
+    return wad_file;
+#endif
     // Increase size of numlumps array to accomodate the new file.
     startlump = numlumps;
     ExtendLumpInfo(newnumlumps);
@@ -279,6 +301,13 @@ int W_CheckNumForName (char* name)
 
         hash = W_LumpNameHash(name) % numlumps;
         
+#ifdef DG_MONO
+        for (i = lumphash[hash]; i != NO_LUMP; i = lumpnext[i])
+        {
+            if (!strncasecmp(lumpinfo[i].name, name, 8))
+                return i;
+        }
+#else
         for (lump_p = lumphash[hash]; lump_p != NULL; lump_p = lump_p->next)
         {
             if (!strncasecmp(lump_p->name, name, 8))
@@ -286,6 +315,7 @@ int W_CheckNumForName (char* name)
                 return lump_p - lumpinfo;
             }
         }
+#endif
     } 
     else
     {
@@ -590,6 +620,21 @@ void W_GenerateHashTable(void)
     }
 
     // Generate hash table
+#ifdef DG_MONO
+    if (numlumps > 0)
+    {
+        lumphash = Z_Malloc(2 * numlumps, PU_STATIC, NULL);
+        lumpnext = Z_Malloc(2 * numlumps, PU_STATIC, NULL);
+        memset(lumphash, 0xFF, 2 * numlumps);
+        for (i=0; i<numlumps; ++i)
+        {
+            unsigned int hash = W_LumpNameHash(lumpinfo[i].name) % numlumps;
+            lumpnext[i] = lumphash[hash];
+            lumphash[hash] = i;
+        }
+    }
+    return;
+#else
     if (numlumps > 0)
     {
         lumphash = Z_Malloc(sizeof(lumpinfo_t *) * numlumps, PU_STATIC, NULL);
@@ -608,6 +653,7 @@ void W_GenerateHashTable(void)
         }
     }
 
+#endif
     // All done!
 }
 

@@ -27,6 +27,7 @@
 
 // Visplane related.
 extern  short*		lastopening;
+extern  short		openings[];
 
 
 typedef void (*planefunction_t) (int top, int bottom);

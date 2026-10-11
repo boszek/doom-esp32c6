@@ -38,3 +38,7 @@ mono:
 ZIG ?= python3
 mono32:
 	$(MAKE) OBJDIR=build_mono32 OUTPUT=doommono32 CC="$(ZIG) -m ziglang cc -target x86-linux-musl" EXTRA_CFLAGS="$(MONO_FLAGS) $(EXTRA_CFLAGS)" all
+
+# jak mono32, ale z pickupami zdrowia (-DDG_KEEP_HEALTH_ITEMS) i sladem dem: regresja silnika (hashe z reference_trace.txt)
+mono32reg:
+	$(MAKE) OBJDIR=build_mono32reg OUTPUT=doommono32reg CC="$(ZIG) -m ziglang cc -target x86-linux-musl" EXTRA_CFLAGS="$(MONO_FLAGS) -DDG_KEEP_HEALTH_ITEMS -DDOOM_TRACE $(EXTRA_CFLAGS)" all

@@ -10,4 +10,4 @@ tools/sync_engine.sh >/dev/null
 arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32C6:CDCOnBoot=cdc doom_c6 2>&1 | grep -E "error" || true
 arduino-cli upload -p /dev/ttyACM1 --fqbn esp32:esp32:XIAO_ESP32C6:CDCOnBoot=cdc doom_c6 2>&1 | tail -1
 sleep 5
-python3 /tmp/claude-1000/-home-boszek-dev-ai-playground-iic-oled/ca695fdc-86b9-4cb8-843d-062b1c994fdc/scratchpad/readlog.py 12 | grep "kl/s" | tail -4
+python3 tools/serial_log.py 12 | grep "kl/s" | tail -4

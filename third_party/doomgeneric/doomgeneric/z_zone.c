@@ -51,6 +51,10 @@ typedef struct memblock_s
 #endif
 } memblock_t;
 
+#ifdef DOOM_ZSTATS
+static int zdbg_used, zdbg_peak;   // zajete bajty strefy (z naglowkami) i szczyt
+#endif
+
 
 typedef struct
 {
@@ -156,6 +160,9 @@ void Z_Free (void* ptr)
 	    *block->user = 0;
     }
 
+#ifdef DOOM_ZSTATS
+    if (block->tag != PU_FREE) zdbg_used -= block->size;
+#endif
     // mark as free
     block->tag = PU_FREE;
     block->user = NULL;
@@ -303,6 +310,7 @@ Z_Malloc
     base->tag = tag;
 #ifdef DOOM_ZSTATS
     base->dbg_file = zdbg_file; base->dbg_line = zdbg_line; zdbg_file = "?";
+    zdbg_used += base->size; if (zdbg_used > zdbg_peak) zdbg_peak = zdbg_used;
 #endif
 
     result  = (void *) ((byte *)base + sizeof(memblock_t));
@@ -535,7 +543,7 @@ void Z_PrintStats(void)
         for (int i = 0; i < 12; i++)
             if (!top[i] || b->size > top[i]->size) { memmove(&top[i+1], &top[i], (11 - i) * sizeof(top[0])); top[i] = b; break; }
     }
-    fprintf(stderr, "ZSTAT zone=%d free=%ld headers=%ld\n", mainzone->size, freeb, hdr);
+    fprintf(stderr, "ZSTAT zone=%d free=%ld headers=%ld used=%d peak=%d\n", mainzone->size, freeb, hdr, zdbg_used, zdbg_peak);
     static const char *nm[] = {"?","STATIC","SOUND","MUSIC","FREE","LEVEL","LEVSPEC","PURGELEVEL","CACHE"};
     for (int t = 1; t < PU_NUM_TAGS; t++) if (count[t]) fprintf(stderr, "ZSTAT tag %-10s blocks=%5d bytes=%7ld\n", nm[t], count[t], bytes[t]);
     {

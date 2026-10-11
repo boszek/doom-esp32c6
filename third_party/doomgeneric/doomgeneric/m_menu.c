@@ -1424,6 +1424,9 @@ boolean M_Responder (event_t* ev)
     static  int     lasty = 0;
     static  int     mousex = 0;
     static  int     lastx = 0;
+#ifdef DG_MONO
+    return false;   // menu wylaczone (brak rysowania); zadne klawisze nie moga go otworzyc
+#endif
 
     // In testcontrols mode, none of the function keys should do anything
     // - the only key is escape to quit.

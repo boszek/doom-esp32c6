@@ -171,6 +171,11 @@ sector_t* GetSectorAtNullAddress(void)
 //
 void P_LoadSegs (int lump)
 {
+#ifdef DG_MONO
+    // segi czytamy wprost z WAD-a (flash): zero RAM-u, pola wyliczaja makra SEG_*
+    numsegs = W_LumpLength (lump) / sizeof(mapseg_t);
+    segs = (seg_t *) W_CacheLumpNum (lump, PU_LEVEL);
+#else
     byte*		data;
     int			i;
     mapseg_t*		ml;
@@ -227,7 +232,29 @@ void P_LoadSegs (int lump)
     }
 	
     W_ReleaseLumpNum(lump);
+#endif
 }
+
+#ifdef DG_MONO
+sector_t *P_SegFrontSector(const seg_t *s)
+{
+    return sides[lines[s->linedef].sidenum[s->side]].sector;
+}
+
+sector_t *P_SegBackSector(const seg_t *s)
+{
+    const line_t *ldef = &lines[s->linedef];
+    if (ldef->flags & ML_TWOSIDED)
+    {
+        int sidenum = ldef->sidenum[s->side ^ 1];
+        // "glass hack": numer poza zakresem -> sektor spod adresu NULL (jak w oryginale)
+        if (sidenum < 0 || sidenum >= numsides)
+            return GetSectorAtNullAddress();
+        return sides[sidenum].sector;
+    }
+    return 0;
+}
+#endif
 
 
 //
@@ -297,6 +324,11 @@ void P_LoadSectors (int lump)
 //
 void P_LoadNodes (int lump)
 {
+#ifdef DG_MONO
+    numnodes = W_LumpLength (lump) / sizeof(mapnode_t);
+    nodes = (node_t *) W_CacheLumpNum (lump, PU_LEVEL);
+    return;
+#else
     byte*	data;
     int		i;
     int		j;
@@ -330,6 +362,7 @@ void P_LoadNodes (int lump)
     }
 	
     W_ReleaseLumpNum(lump);
+#endif
 }
 
 
@@ -416,21 +449,24 @@ void P_LoadLineDefs (int lump)
 	ld->tag = SHORT(mld->tag);
 	v1 = ld->v1 = &vertexes[SHORT(mld->v1)];
 	v2 = ld->v2 = &vertexes[SHORT(mld->v2)];
+#ifndef DG_MONO
 	ld->dx = v2->x - v1->x;
 	ld->dy = v2->y - v1->y;
+#endif
 	
-	if (!ld->dx)
+	if (!LINE_DX(ld))
 	    ld->slopetype = ST_VERTICAL;
-	else if (!ld->dy)
+	else if (!LINE_DY(ld))
 	    ld->slopetype = ST_HORIZONTAL;
 	else
 	{
-	    if (FixedDiv (ld->dy , ld->dx) > 0)
+	    if (FixedDiv (LINE_DY(ld) , LINE_DX(ld)) > 0)
 		ld->slopetype = ST_POSITIVE;
 	    else
 		ld->slopetype = ST_NEGATIVE;
 	}
 		
+#ifndef DG_MONO
 	if (v1->x < v2->x)
 	{
 	    ld->bbox[BOXLEFT] = v1->x;
@@ -452,6 +488,7 @@ void P_LoadLineDefs (int lump)
 	    ld->bbox[BOXBOTTOM] = v2->y;
 	    ld->bbox[BOXTOP] = v1->y;
 	}
+#endif
 
 	ld->sidenum[0] = SHORT(mld->sidenum[0]);
 	ld->sidenum[1] = SHORT(mld->sidenum[1]);
@@ -569,7 +606,7 @@ void P_GroupLines (void)
     for (i=0 ; i<numsubsectors ; i++, ss++)
     {
 	seg = &segs[ss->firstline];
-	ss->sector = seg->sidedef->sector;
+	ss->sector = SEG_SIDEDEF(seg)->sector;
     }
 
     // count number of lines in each sector

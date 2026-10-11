@@ -156,29 +156,30 @@ R_PointOnSide
     fixed_t	dy;
     fixed_t	left;
     fixed_t	right;
+    const fixed_t nx = NODE_X(node), ny = NODE_Y(node), ndx = NODE_DX(node), ndy = NODE_DY(node);
 	
-    if (!node->dx)
+    if (!ndx)
     {
-	if (x <= node->x)
-	    return node->dy > 0;
+	if (x <= nx)
+	    return ndy > 0;
 	
-	return node->dy < 0;
+	return ndy < 0;
     }
-    if (!node->dy)
+    if (!ndy)
     {
-	if (y <= node->y)
-	    return node->dx < 0;
+	if (y <= ny)
+	    return ndx < 0;
 	
-	return node->dx > 0;
+	return ndx > 0;
     }
 	
-    dx = (x - node->x);
-    dy = (y - node->y);
+    dx = (x - nx);
+    dy = (y - ny);
 	
     // Try to quickly decide by looking at sign bits.
-    if ( (node->dy ^ node->dx ^ dx ^ dy)&0x80000000 )
+    if ( (ndy ^ ndx ^ dx ^ dy)&0x80000000 )
     {
-	if  ( (node->dy ^ dx) & 0x80000000 )
+	if  ( (ndy ^ dx) & 0x80000000 )
 	{
 	    // (left is negative)
 	    return 1;
@@ -186,8 +187,8 @@ R_PointOnSide
 	return 0;
     }
 
-    left = FixedMul ( node->dy>>FRACBITS , dx );
-    right = FixedMul ( dy , node->dx>>FRACBITS );
+    left = FixedMul ( ndy>>FRACBITS , dx );
+    right = FixedMul ( dy , ndx>>FRACBITS );
 	
     if (right < left)
     {
@@ -214,11 +215,11 @@ R_PointOnSegSide
     fixed_t	left;
     fixed_t	right;
 	
-    lx = line->v1->x;
-    ly = line->v1->y;
+    lx = SEG_V1(line)->x;
+    ly = SEG_V1(line)->y;
 	
-    ldx = line->v2->x - lx;
-    ldy = line->v2->y - ly;
+    ldx = SEG_V2(line)->x - lx;
+    ldy = SEG_V2(line)->y - ly;
 	
     if (!ldx)
     {

@@ -550,6 +550,14 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     
     mousex = mousey = 0; 
 	 
+#ifdef DG_MONO
+    {   // analogowe drazki pada (platforma): dodajemy do ruchu z klawiszy
+	extern void DG_GetAnalog(int *fwd, int *side, int *turn);
+	int afwd = 0, aside = 0, aturn = 0;
+	DG_GetAnalog(&afwd, &aside, &aturn);
+	forward += afwd; side += aside; cmd->angleturn += aturn;
+    }
+#endif
     if (forward > MAXPLMOVE) 
 	forward = MAXPLMOVE; 
     else if (forward < -MAXPLMOVE) 
@@ -601,7 +609,10 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
 // G_DoLoadLevel 
 //
 void G_DoLoadLevel (void) 
-{ 
+{
+#ifdef DOOM_ZSTATS
+    fprintf(stderr, "LEVEL E%dM%d gametic %d\n", gameepisode, gamemap, gametic);
+#endif 
     int             i; 
 
     // Set the sky map.
@@ -659,7 +670,9 @@ void G_DoLoadLevel (void)
     
     // clear cmd building stuff
 
+#ifndef DG_MONO   // trzymany przycisk (np. ogien) ma przezyc zmiane poziomu
     memset (gamekeydown, 0, sizeof(gamekeydown));
+#endif
     joyxmove = joyymove = joystrafemove = 0;
     mousex = mousey = 0;
     sendpause = sendsave = paused = false;
@@ -856,7 +869,31 @@ void G_Ticker (void)
     int		i;
     int		buf; 
     ticcmd_t*	cmd;
+
+#ifdef DOOM_ZSTATS
+    {   // pomiar: DOOM_STATS_TIC=N -> po N tickach gry wypisz statystyki strefy i wyjdz
+        static int stats_tic = -2;
+        if (stats_tic == -2) { const char *e = getenv("DOOM_STATS_TIC"); stats_tic = e ? atoi(e) : -1; }
+        static int exit_every = -2;   // test: DOOM_EXIT_EVERY=N -> co N tickow wyjscie z poziomu
+        if (exit_every == -2) { const char *e = getenv("DOOM_EXIT_EVERY"); exit_every = e ? atoi(e) : -1; }
+        if (exit_every > 0 && gamestate == GS_LEVEL && gameaction == ga_nothing && leveltime >= exit_every)
+        {
+            extern void Z_PrintStats(void);
+            fprintf(stderr, "EXIT E%dM%d: ", gameepisode, gamemap); Z_PrintStats(); G_ExitLevel();
+        }
+        if (stats_tic > 0 && gamestate == GS_LEVEL && gametic >= stats_tic)
+        {
+            extern void Z_PrintStats(void); extern void R_PrintPeaks(void);
+            Z_PrintStats(); R_PrintPeaks(); exit(0);
+        }
+    }
+#endif
     
+#ifdef DG_MONO
+    // nieśmiertelność domyslnie (G_PlayerReborn zeruje cheats, wiec ustawiamy w kazdym ticku poza dema)
+    if (!demoplayback && gamestate == GS_LEVEL && playeringame[consoleplayer])
+        players[consoleplayer].cheats |= CF_GODMODE;
+#endif
     // do player reborns if needed
     for (i=0 ; i<MAXPLAYERS ; i++) 
 	if (playeringame[i] && players[i].playerstate == PST_REBORN) 
@@ -1356,6 +1393,17 @@ void G_DoCompleted (void)
     if (automapactive) 
 	AM_Stop (); 
 	
+#ifdef DG_MONO
+    if (gamemap == 8)
+    {
+	// koniec epizodu: platforma pokazuje ekran koncowy, potem zaczynamy od E1M1
+	extern void DG_EpisodeComplete(void);
+	DG_EpisodeComplete();
+	G_DeferedInitNew (gameskill, 1, 1);
+	return;
+    }
+#endif
+
     if (gamemode != commercial)
     {
         // Chex Quest ends after 5 levels, rather than 8.
@@ -1478,6 +1526,11 @@ void G_DoCompleted (void)
 		, sizeof(wminfo.plyr[i].frags)); 
     } 
  
+#ifdef DG_MONO
+    // bez ekranu statystyk: od razu nastepna mapa (wminfo.next jest juz policzone)
+    gameaction = ga_worlddone;
+    return;
+#endif
     gamestate = GS_INTERMISSION; 
     viewactive = false; 
     automapactive = false; 

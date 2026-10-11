@@ -17,3 +17,5 @@
 
 *.o
 *.d
+build_mono32reg/
+/host/doommono32reg

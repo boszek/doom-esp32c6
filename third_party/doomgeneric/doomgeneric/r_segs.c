@@ -108,15 +108,15 @@ R_RenderMaskedSegRange
     //   for horizontal / vertical / diagonal. Diagonal?
     // OPTIMIZE: get rid of LIGHTSEGSHIFT globally
     curline = ds->curline;
-    frontsector = curline->frontsector;
-    backsector = curline->backsector;
-    texnum = texturetranslation[curline->sidedef->midtexture];
+    frontsector = SEG_FRONT(curline);
+    backsector = SEG_BACK(curline);
+    texnum = texturetranslation[SEG_SIDEDEF(curline)->midtexture];
 	
     lightnum = (frontsector->lightlevel >> LIGHTSEGSHIFT)+extralight;
 
-    if (curline->v1->y == curline->v2->y)
+    if (SEG_V1(curline)->y == SEG_V2(curline)->y)
 	lightnum--;
-    else if (curline->v1->x == curline->v2->x)
+    else if (SEG_V1(curline)->x == SEG_V2(curline)->x)
 	lightnum++;
 
     if (lightnum < 0)		
@@ -134,7 +134,7 @@ R_RenderMaskedSegRange
     mceilingclip = ds->sprtopclip;
     
     // find positioning
-    if (curline->linedef->flags & ML_DONTPEGBOTTOM)
+    if (SEG_LINEDEF(curline)->flags & ML_DONTPEGBOTTOM)
     {
 	dc_texturemid = frontsector->floorheight > backsector->floorheight
 	    ? frontsector->floorheight : backsector->floorheight;
@@ -146,7 +146,7 @@ R_RenderMaskedSegRange
 	    ? frontsector->ceilingheight : backsector->ceilingheight;
 	dc_texturemid = dc_texturemid - viewz;
     }
-    dc_texturemid += curline->sidedef->rowoffset;
+    dc_texturemid += SEG_SIDEDEF(curline)->rowoffset;
 			
     if (fixedcolormap)
 	dc_colormap = fixedcolormap;
@@ -388,21 +388,21 @@ R_StoreWallRange
 	I_Error ("Bad R_RenderWallRange: %i to %i", start , stop);
 #endif
     
-    sidedef = curline->sidedef;
-    linedef = curline->linedef;
+    sidedef = SEG_SIDEDEF(curline);
+    linedef = SEG_LINEDEF(curline);
 
     // mark the segment as visible for auto map
     linedef->flags |= ML_MAPPED;
     
     // calculate rw_distance for scale calculation
-    rw_normalangle = curline->angle + ANG90;
+    rw_normalangle = SEG_ANGLE(curline) + ANG90;
     offsetangle = abs(rw_normalangle-rw_angle1);
     
     if (offsetangle > ANG90)
 	offsetangle = ANG90;
 
     distangle = ANG90 - offsetangle;
-    hyp = R_PointToDist (curline->v1->x, curline->v1->y);
+    hyp = R_PointToDist (SEG_V1(curline)->x, SEG_V1(curline)->y);
     sineval = finesine[distangle>>ANGLETOFINESHIFT];
     rw_distance = FixedMul (hyp, sineval);
 		
@@ -431,8 +431,8 @@ R_StoreWallRange
 	    fixed_t		trx,try;
 	    fixed_t		gxt,gyt;
 
-	    trx = curline->v1->x - viewx;
-	    try = curline->v1->y - viewy;
+	    trx = SEG_V1(curline)->x - viewx;
+	    try = SEG_V1(curline)->y - viewy;
 			
 	    gxt = FixedMul(trx,viewcos); 
 	    gyt = -FixedMul(try,viewsin); 
@@ -604,9 +604,15 @@ R_StoreWallRange
 	if (sidedef->midtexture)
 	{
 	    // masked midtexture
+#ifdef DG_MONO
+	    // za malo miejsca w openings[]: pomijamy ten maskowany fragment (zamiast pisac za tablica)
+	    if (lastopening - openings + 3 * (rw_stopx - rw_x) <= MAXOPENINGS)
+#endif
+	    {
 	    maskedtexture = true;
 	    ds_p->maskedtexturecol = maskedtexturecol = lastopening - rw_x;
 	    lastopening += rw_stopx - rw_x;
+	    }
 	}
     }
     
@@ -629,7 +635,7 @@ R_StoreWallRange
 	if (rw_normalangle-rw_angle1 < ANG180)
 	    rw_offset = -rw_offset;
 
-	rw_offset += sidedef->textureoffset + curline->offset;
+	rw_offset += sidedef->textureoffset + SEG_OFFSET(curline);
 	rw_centerangle = ANG90 + viewangle - rw_normalangle;
 	
 	// calculate light table
@@ -640,9 +646,9 @@ R_StoreWallRange
 	{
 	    lightnum = (frontsector->lightlevel >> LIGHTSEGSHIFT)+extralight;
 
-	    if (curline->v1->y == curline->v2->y)
+	    if (SEG_V1(curline)->y == SEG_V2(curline)->y)
 		lightnum--;
-	    else if (curline->v1->x == curline->v2->x)
+	    else if (SEG_V1(curline)->x == SEG_V2(curline)->x)
 		lightnum++;
 
 	    if (lightnum < 0)		
@@ -711,6 +717,14 @@ R_StoreWallRange
     R_RenderSegLoop ();
 
     
+#ifdef DG_MONO
+    if (lastopening - openings + 2 * (rw_stopx - start) > MAXOPENINGS)
+    {
+        ds_p->silhouette = 0;            // brak miejsca: segment nie przycina sprite'ow
+        ds_p->maskedtexturecol = NULL;
+        maskedtexture = false;
+    }
+#endif
     // save sprite clipping info
     if ( ((ds_p->silhouette & SIL_TOP) || maskedtexture)
 	 && !ds_p->sprtopclip)

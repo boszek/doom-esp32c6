@@ -43,7 +43,7 @@ planefunction_t		ceilingfunc;
 
 // Here comes the obnoxious "visplane".
 #ifdef DG_MONO
-#define MAXVISPLANES	48    // szczyt w demach: 38
+#define MAXVISPLANES	64    // szczyty (boty na E1M1-9): 45; po przepelnieniu uzywamy ostatniej plaszczyzny zamiast I_Error
 #else
 #define MAXVISPLANES	128
 #endif
@@ -53,11 +53,6 @@ visplane_t*		floorplane;
 visplane_t*		ceilingplane;
 
 // ?
-#ifdef DG_MONO
-#define MAXOPENINGS	1536   // szczyt w demach: 841
-#else
-#define MAXOPENINGS	SCREENWIDTH*64
-#endif
 short			openings[MAXOPENINGS];
 short*			lastopening;
 
@@ -244,7 +239,13 @@ R_FindPlane
 	return check;
 		
     if (lastvisplane - visplanes == MAXVISPLANES)
+    {
+#ifdef DG_MONO
+	return lastvisplane - 1;   // przepelnienie: lekki blad obrazu zamiast zatrzymania gry
+#else
 	I_Error ("R_FindPlane: no more visplanes");
+#endif
+    }
 		
     lastvisplane++;
 
@@ -310,6 +311,10 @@ R_CheckPlane
 	return pl;		
     }
 	
+#ifdef DG_MONO
+    if (lastvisplane - visplanes >= MAXVISPLANES)
+	return pl;
+#endif
     // make a new visplane
     lastvisplane->height = pl->height;
     lastvisplane->picnum = pl->picnum;
@@ -374,7 +379,7 @@ void R_DrawPlanes (void)
     int			angle;
     int                 lumpnum;
 				
-#ifdef RANGECHECK
+#if defined(RANGECHECK) && !defined(DG_MONO)
     if (ds_p - drawsegs > MAXDRAWSEGS)
 	I_Error ("R_DrawPlanes: drawsegs overflow (%i)",
 		 ds_p - drawsegs);

@@ -3,6 +3,7 @@
 
   wadtool.py info  doom1.wad
   wadtool.py pack  doom1.wad out.wad TRACE1 [TRACE2 ...] [--sprite-family] [--keep NAME,...]
+  wadtool.py episode doom1.wad out.wad [--demos] [--keep NAME,...]   # pelny epizod do gry (bez sladu)
 
 TRACE = stderr silnika zbudowanego z -DDOOM_LUMPTRACE (linie "LUMP <faza> <nr> <nazwa>").
 Zachowujemy caly katalog lumpow (silnik polega na kolejnosci: S_START..S_END, F_START..F_END,
@@ -171,6 +172,67 @@ def cmd_pack(src, dst, traces, family, extra_keep, compact=False):
         print(f"    {c:8s} {by[c]:9d} B")
 
 
+MAP_LUMPS = {"THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"}
+GAME_KEEP = {"PLAYPAL", "COLORMAP", "PNAMES", "TEXTURE1", "TEXTURE2"}
+
+
+def is_map_marker(name):
+    return len(name) == 4 and name[0] == "E" and name[2] == "M" and name[1].isdigit() and name[3].isdigit()
+
+
+def cmd_episode(src, dst, keep_demos, extra_keep):
+    """WAD do grania: zostaja mapy, tekstury, flaty, sprite'y i tabele; dzwieki, muzyka, menu, HUD,
+    intermisja itp. dostaja wspolny stub 1x1. Katalog zostaje caly (nazwy sie rozwiazuja)."""
+    data, ident, lumps = read_wad(src)
+    cats = classify(lumps)
+    keep = set()
+    inmap = False
+    for i, (name, pos, size) in enumerate(lumps):
+        if is_map_marker(name):
+            inmap = True
+            continue
+        if inmap and name in MAP_LUMPS:
+            keep.add(i)
+            continue
+        inmap = False
+        if cats[i] in ("sprite", "flat", "patch"):
+            keep.add(i)
+        elif name in GAME_KEEP or name in extra_keep:
+            keep.add(i)
+        elif keep_demos and name.startswith("DEMO"):
+            keep.add(i)
+    stub = struct.pack("<hhhhi", 1, 1, 0, 0, 12) + b"\xff\xff\xff\xff"
+    out = bytearray(b"\0" * 12)
+
+    def align():
+        while len(out) % 4:
+            out.append(0)
+
+    stub_pos = len(out)
+    out += stub
+    new = []
+    by = {}
+    for i, (name, pos, size) in enumerate(lumps):
+        if size == 0:
+            new.append((name, 0, 0))
+        elif i in keep:
+            align()
+            new.append((name, len(out), size))
+            out += data[pos:pos + size]
+            by[cats[i]] = by.get(cats[i], 0) + size
+        else:
+            new.append((name, stub_pos, len(stub)))
+    align()
+    dir_off = len(out)
+    for name, pos, size in new:
+        out += struct.pack("<ii8s", pos, size, name.encode("ascii"))
+    struct.pack_into("<4sii", out, 0, ident, len(new), dir_off)
+    open(dst, "wb").write(out)
+    print(f"{src} ({len(data)} B) -> {dst} ({len(out)} B), lumpow {len(new)}, z danymi {len(keep)}")
+    for c in sorted(by, key=lambda k: -by[k]):
+        print(f"    {c:8s} {by[c]:9d} B")
+
+
 def main():
     a = sys.argv[1:]
     if len(a) >= 2 and a[0] == "info":
@@ -191,6 +253,16 @@ def main():
                 rest.append(a[i])
                 i += 1
         cmd_pack(a[1], a[2], rest, family, extra, compact)
+    elif len(a) >= 3 and a[0] == "episode":
+        extra = set()
+        i = 3
+        while i < len(a):
+            if a[i] == "--keep":
+                extra |= set(a[i + 1].split(","))
+                i += 2
+            else:
+                i += 1
+        cmd_episode(a[1], a[2], "--demos" in a, extra)
     else:
         print(__doc__)
         sys.exit(1)

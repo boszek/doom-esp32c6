@@ -26,6 +26,9 @@ static void cmd(uint8_t c)
 
 extern "C" void oled_init(void)
 {
+    static bool done = false;
+    if (done) return;
+    done = true;
     Wire.begin(OLED_SDA, OLED_SCL, OLED_I2C_HZ);
     Wire.setBufferSize(256);
     static const uint8_t seq[] = {

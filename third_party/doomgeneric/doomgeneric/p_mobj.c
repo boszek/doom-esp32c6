@@ -789,6 +789,17 @@ void P_SpawnMapThing (mapthing_t* mthing)
     if (!(mthing->options & bit) )
 	return;
 	
+#ifdef DG_MONO
+    // z nieśmiertelnością zdrowie/pancerz nic nie daje, a kazdy obiekt to 156 B RAM-u:
+    // nie tworzymy apteczek, bonusow zdrowia/pancerza, pancerzy i sfer (mozna wlaczyc -DDG_KEEP_HEALTH_ITEMS)
+#ifndef DG_KEEP_HEALTH_ITEMS
+    switch (mthing->type)
+    {
+      case 2011: case 2012: case 2013: case 2014: case 2015: case 2018: case 2019: case 83:
+        return;
+    }
+#endif
+#endif
     // find which type to spawn
     for (i=0 ; i< NUMMOBJTYPES ; i++)
 	if (mthing->type == mobjinfo[i].doomednum)

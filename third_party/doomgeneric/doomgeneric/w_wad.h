@@ -41,12 +41,12 @@ typedef struct lumpinfo_s lumpinfo_t;
 #ifdef DG_MONO
 // jeden zmapowany WAD: bez wad_file i cache (oszczednosc RAM)
 extern wad_file_t *dg_wad_file;
+// ten sam uklad co filelump_t: tablica lumpinfo to wprost katalog WAD-a w flashu (zero RAM-u)
 struct lumpinfo_s
 {
-    char	name[8];
     int		position;
     int		size;
-    lumpinfo_t *next;   // lancuch tablicy mieszajacej
+    char	name[8];
 };
 #else
 struct lumpinfo_s

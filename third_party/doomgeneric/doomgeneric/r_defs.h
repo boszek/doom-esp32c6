@@ -49,7 +49,7 @@
 #define SIL_BOTH		3
 
 #ifdef DG_MONO
-#define MAXDRAWSEGS		96    // szczyt w demach: 63
+#define MAXDRAWSEGS		128   // szczyt (boty na E1M1-9): 96; przepelnienie jest bezpieczne (brak wpisu)
 #else
 #define MAXDRAWSEGS		256
 #endif
@@ -182,9 +182,11 @@ typedef struct line_s
     vertex_t*	v1;
     vertex_t*	v2;
 
+#ifndef DG_MONO
     // Precalculated v2 - v1 for side checking.
     fixed_t	dx;
     fixed_t	dy;
+#endif
 
     // Animation related.
     short	flags;
@@ -198,9 +200,11 @@ typedef struct line_s
     byte	slopetype;   // w luce po sidenum (oszczednosc 4 B na kreske)
 #endif
 
+#ifndef DG_MONO
     // Neat. Another bounding box, for the extent
     //  of the LineDef.
     fixed_t	bbox[4];
+#endif
 
     // To aid move clipping.
 #ifndef DG_MONO
@@ -218,6 +222,22 @@ typedef struct line_s
     // thinker_t for reversable actions
     void*	specialdata;		
 } line_t;
+
+#ifdef DG_MONO
+// dx/dy/bbox wyliczane z wierzcholkow (oszczednosc 24 B na kreske)
+#define LINE_DX(l)	((l)->v2->x - (l)->v1->x)
+#define LINE_DY(l)	((l)->v2->y - (l)->v1->y)
+static inline fixed_t dg_line_bbox(const line_t *l, int w)
+{
+    fixed_t a = (w < 2) ? l->v1->y : l->v1->x, b = (w < 2) ? l->v2->y : l->v2->x;
+    return (w == 0 || w == 3) ? (a > b ? a : b) : (a < b ? a : b);   // BOXTOP(0)/BOXRIGHT(3) = max, BOXBOTTOM(1)/BOXLEFT(2) = min
+}
+#define LINE_BBOX(l,w)	dg_line_bbox((l),(w))
+#else
+#define LINE_DX(l)	((l)->dx)
+#define LINE_DY(l)	((l)->dy)
+#define LINE_BBOX(l,w)	((l)->bbox[w])
+#endif
 
 
 
@@ -242,6 +262,15 @@ typedef struct subsector_s
 //
 // The LineSeg.
 //
+#ifdef DG_MONO
+// seg_t to wprost rekord z WAD-a (mapseg_t, 12 B), czytany z flasha bez kopiowania do RAM-u;
+// reszte pol wyliczaja makra SEG_* (patrz r_state.h).
+#include "doomdata.h"
+typedef mapseg_t seg_t;
+#else
+//
+// The LineSeg.
+//
 typedef struct
 {
     vertex_t*	v1;
@@ -261,12 +290,22 @@ typedef struct
     sector_t*	backsector;
     
 } seg_t;
+#endif
 
 
 
 //
 // BSP node.
 //
+#ifdef DG_MONO
+// wezly czytane wprost z WAD-a (flash): wspolrzedne w jednostkach mapy, <<FRACBITS przy uzyciu
+#include "doomdata.h"
+typedef mapnode_t node_t;
+#define NODE_X(n)  (((fixed_t)(n)->x)  << FRACBITS)
+#define NODE_Y(n)  (((fixed_t)(n)->y)  << FRACBITS)
+#define NODE_DX(n) (((fixed_t)(n)->dx) << FRACBITS)
+#define NODE_DY(n) (((fixed_t)(n)->dy) << FRACBITS)
+#else
 typedef struct
 {
     // Partition line.
@@ -286,6 +325,11 @@ typedef struct
     unsigned short children[2];
     
 } node_t;
+#define NODE_X(n)  ((n)->x)
+#define NODE_Y(n)  ((n)->y)
+#define NODE_DX(n) ((n)->dx)
+#define NODE_DY(n) ((n)->dy)
+#endif
 
 
 
@@ -457,5 +501,13 @@ typedef struct
 
 
 
+
+
+// rozmiar tablicy openings[] (r_plane.c); w DG_MONO z kontrola przepelnienia w R_StoreWallRange
+#ifdef DG_MONO
+#define MAXOPENINGS	1536   // szczyt (boty na E1M1-9): 898
+#else
+#define MAXOPENINGS	SCREENWIDTH*64
+#endif
 
 #endif

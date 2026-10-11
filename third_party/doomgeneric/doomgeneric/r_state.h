@@ -74,6 +74,27 @@ extern vertex_t*	vertexes;
 
 extern int		numsegs;
 extern seg_t*		segs;
+#ifdef DG_MONO
+sector_t *P_SegFrontSector(const seg_t *s);
+sector_t *P_SegBackSector(const seg_t *s);
+#define SEG_V1(s)	(&vertexes[(s)->v1])
+#define SEG_V2(s)	(&vertexes[(s)->v2])
+#define SEG_OFFSET(s)	(((fixed_t)(s)->offset) << 16)
+#define SEG_ANGLE(s)	(((angle_t)(s)->angle) << 16)
+#define SEG_LINEDEF(s)	(&lines[(s)->linedef])
+#define SEG_SIDEDEF(s)	(&sides[lines[(s)->linedef].sidenum[(s)->side]])
+#define SEG_FRONT(s)	P_SegFrontSector(s)
+#define SEG_BACK(s)	P_SegBackSector(s)
+#else
+#define SEG_V1(s)	((s)->v1)
+#define SEG_V2(s)	((s)->v2)
+#define SEG_OFFSET(s)	((s)->offset)
+#define SEG_ANGLE(s)	((s)->angle)
+#define SEG_LINEDEF(s)	((s)->linedef)
+#define SEG_SIDEDEF(s)	((s)->sidedef)
+#define SEG_FRONT(s)	((s)->frontsector)
+#define SEG_BACK(s)	((s)->backsector)
+#endif
 
 extern int		numsectors;
 extern sector_t*	sectors;

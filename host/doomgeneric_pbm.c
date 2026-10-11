@@ -68,21 +68,65 @@ void DG_DrawFrame()
 #endif
 }
 
+// DOOM_FAST=1: wirtualny zegar zamiast prawdziwego czasu (sen tylko przesuwa zegar), gra biegnie z maksymalna predkoscia
+static int fastClock = -1;
+static uint32_t virtualMs;
+
 void DG_SleepMs(uint32_t ms)
 {
+    if (fastClock < 0) fastClock = getenv("DOOM_FAST") != NULL;
+    if (fastClock) { virtualMs += ms; return; }
     struct timespec ts = { ms / 1000, (long)(ms % 1000) * 1000000L };
     nanosleep(&ts, NULL);
 }
 
 uint32_t DG_GetTicksMs()
 {
+    if (fastClock < 0) fastClock = getenv("DOOM_FAST") != NULL;
+    if (fastClock) return virtualMs;
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
     return (uint32_t)((t.tv_sec - t0.tv_sec) * 1000 + (t.tv_nsec - t0.tv_nsec) / 1000000);
 }
 
-int DG_GetKey(int *pressed, unsigned char *key) { return 0; }
+// Prosty bot do testow bez pada: DOOM_BOT=<ziarno> -> losowo chodzi, skreca, strzela i uzywa.
+#include "doomkeys.h"
+extern int gametic;
+static unsigned botRng;
+static unsigned botNext(void) { botRng = botRng * 1103515245u + 12345u; return (botRng >> 16) & 0x7fff; }
+
+int DG_GetKey(int *pressed, unsigned char *key)
+{
+    static int enabled = -1, lastTic = -1, qn = 0, qi = 0;
+    static int held[6];                        // fwd, left, right, fire, use, strafe
+    static int turnDir = 1, nextTurn = 0;
+    static struct { int p; unsigned char k; } q[16];
+    static const unsigned char codes[6] = { KEY_UPARROW, KEY_LEFTARROW, KEY_RIGHTARROW, KEY_FIRE, KEY_USE, KEY_STRAFE_R };
+    if (enabled < 0) { const char *e = getenv("DOOM_BOT"); enabled = e != NULL; botRng = e ? atoi(e) : 0; }
+    if (!enabled) return 0;
+    if (gametic != lastTic)
+    {
+        lastTic = gametic;
+        int want[6] = { 1, 0, 0, 0, 0, 0 };
+        if (gametic >= nextTurn) { turnDir = (botNext() & 1) ? 1 : -1; nextTurn = gametic + 5 + botNext() % 40; }
+        if (botNext() % 100 < 35) { if (turnDir > 0) want[2] = 1; else want[1] = 1; }
+        want[3] = (gametic / 20) & 1;          // ogien na przemian
+        want[4] = (gametic % 25) < 3;          // uzycie (drzwi/przelaczniki)
+        want[5] = (botNext() % 100) < 10;
+        if (botNext() % 100 < 4) want[0] = 0;
+        qn = qi = 0;
+        for (int i = 0; i < 6; i++)
+            if (want[i] != held[i]) { held[i] = want[i]; q[qn].p = want[i]; q[qn].k = codes[i]; qn++; }
+    }
+    if (qi < qn) { *pressed = q[qi].p; *key = q[qi].k; qi++; return 1; }
+    return 0;
+}
 void DG_SetWindowTitle(const char *title) {}
+
+#ifdef DG_MONO
+void DG_GetAnalog(int *fwd, int *side, int *turn) { *fwd = *side = *turn = 0; }
+void DG_EpisodeComplete(void) { fprintf(stderr, "EPISODE COMPLETE\n"); }
+#endif
 
 // WAD mapowany w pamieci (tak jak na ESP32 przez esp_partition_mmap)
 const unsigned char *DG_MapWad(const char *path, unsigned int *length)

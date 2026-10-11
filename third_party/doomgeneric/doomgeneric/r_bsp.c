@@ -261,8 +261,8 @@ void R_AddLine (seg_t*	line)
     curline = line;
 
     // OPTIMIZE: quickly reject orthogonal back sides.
-    angle1 = R_PointToAngle (line->v1->x, line->v1->y);
-    angle2 = R_PointToAngle (line->v2->x, line->v2->y);
+    angle1 = R_PointToAngle (SEG_V1(line)->x, SEG_V1(line)->y);
+    angle2 = R_PointToAngle (SEG_V2(line)->x, SEG_V2(line)->y);
     
     // Clip to view edges.
     // OPTIMIZE: make constant out of 2*clipangle (FIELDOFVIEW).
@@ -310,7 +310,7 @@ void R_AddLine (seg_t*	line)
     if (x1 == x2)
 	return;				
 	
-    backsector = line->backsector;
+    backsector = SEG_BACK(line);
 
     // Single sided line?
     if (!backsector)
@@ -334,7 +334,7 @@ void R_AddLine (seg_t*	line)
     if (backsector->ceilingpic == frontsector->ceilingpic
 	&& backsector->floorpic == frontsector->floorpic
 	&& backsector->lightlevel == frontsector->lightlevel
-	&& curline->sidedef->midtexture == 0)
+	&& SEG_SIDEDEF(curline)->midtexture == 0)
     {
 	return;
     }
