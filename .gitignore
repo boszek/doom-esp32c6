@@ -1,0 +1,19 @@
+# WAD-y (shareware ma wlasna licencje, nie wrzucamy do repo); generowane przez tools/wadtool.py
+/wad/
+
+# artefakty buildu hosta i zrzuty klatek
+/host/build_mono32/
+/host/doommono32
+/host/doomgeneric_mono*
+/host/f[cmnr]*_demo*/
+/host/frames_demo*/
+/host/raw_demo*/
+
+# kopia silnika generowana przez tools/sync_engine.sh
+/doom_c6/src/engine/
+
+# oryginalna historia gita doomgeneric (przeniesiona z third_party/doomgeneric/.git)
+.git-upstream/
+
+*.o
+*.d

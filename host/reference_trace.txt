@@ -1,0 +1,9 @@
+== demo1
+TRACE gametic=5026 map=E1M5 mobjs=198 hash=bfb1c478 prnd=181 px=87385351 py=84364146 pz=5767168 hp=0
+timed 5026 gametics in 89 realtics (1976.516846 fps)
+== demo2
+TRACE gametic=3836 map=E1M3 mobjs=280 hash=0215d6c7 prnd=75 px=-9362093 py=-84944896 pz=3145728 hp=0
+timed 3836 gametics in 77 realtics (1743.636353 fps)
+== demo3
+TRACE gametic=2134 map=E1M7 mobjs=254 hash=c321b44e prnd=207 px=-91417116 py=-164628508 pz=7340032 hp=0
+timed 2134 gametics in 60 realtics (1244.833374 fps)
